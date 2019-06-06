@@ -470,31 +470,253 @@ void TemperControl(void)
 #endif
 }
 
+void InnerOxygenProcess(void)
+{
+    uint8_t i;
+    float vol, result;
+
+    //内部氧浓度
+    Sort16(man.innerOxygenBufferADC, OXYGENBUFFER_SIZE);
+    man.innerOxygenADC = GetAverage16(man.innerOxygenBufferADC, OXYGENBUFFER_SIZE, OXYGENBUFFER_SIZE/4);       
+    if(man.innerOxygenADC <= 0x1000)
+    {
+        cDebug("CHIP0 RESET=============================\r\n");
+        TM770X_Init(CHIP0_TM7706);
+        Delay10ms();    
+    }
+    
+    if(man.innerOxygenADC > 0x8000)
+        vol = (float)(man.innerOxygenADC-0x8000)/(float)(0x7FFF)*OXYGEN_ADC_INPUT_VOLTAGE_RANGE_MV;  //14.2mV
+    else
+        vol = 0;
+    for(i=0;i<SIZEOF(OxygenSensor_Table);i++)
+    {
+        if(vol < OxygenSensor_Table[i].voltageMV)
+            break;
+    }
+    if(i>0) i--;
+    result = OxygenSensor_K[i] * (vol - OxygenSensor_Table[i].voltageMV) + OxygenSensor_Table[i].oxygenPercent;
+    man.fCurInnerOxygen = (result + man.innerOxygenCalibOffset) * man.innerOxygenCalibRatio; //校准
+
+    if(man.curPage == PAGE_CALIBRATION || man.curPage == PAGE_ADJUSTED)
+    {
+        char s[10];
+        sprintf(s, "%f", man.fCurInnerOxygen);
+        //cDebug("the man.curInnerOxygen = %s\r\n", s);
+        //cDebug("strlen(s) = %d\r\n", (int)strlen(s));
+        SetTextValueLen(0x0428, s, 6);
+    }
+
+    man.curInnerOxygen = man.fCurInnerOxygen;
+
+    if(man.curInnerOxygen < 19)
+        man.curInnerOxygen = 0;
+    else if(man.curInnerOxygen >= 18 && man.curInnerOxygen < 21)
+        man.curInnerOxygen = 21;
+    if(man.curInnerOxygen > 99) man.curInnerOxygen = 99;
+    Int2String(man.curInnerOxygen, man.sCurOxygen);//更新氧浓度显示
+	SetTextValueLen(VAR_ADDR_CURRENTOXYGEN, man.sCurOxygen, 2);       
+    //cDebug("\r\nThe inner oxygen ADC is 0x%04x\r\n", (int)man.innerOxygenADC);
+}
+
+void MaskOxygenProcess(void)
+{
+    uint8_t i;
+    float vol, result;
+
+    //氧罩氧浓度
+    Sort16(man.maskOxygenBufferADC, OXYGENBUFFER_SIZE);
+    man.maskOxygenADC = GetAverage16(man.maskOxygenBufferADC, OXYGENBUFFER_SIZE, OXYGENBUFFER_SIZE/4);
+//        if(man.maskOxygenADC <= 0x1000)
+//        {
+//            cDebug("=============================\r\n");
+//            TM770X_Init(CHIP0_TM7706);
+//            //Delay10ms();    
+//        }
+
+    if(man.maskOxygenADC > 0x8000)
+        vol = (float)(man.maskOxygenADC-0x8000)/(float)(0x7FFF)*OXYGEN_ADC_INPUT_VOLTAGE_RANGE_MV;  //14.2mV
+    else
+        vol = 0;
+    for(i=0;i<SIZEOF(OxygenSensor_Table);i++)
+    {
+        if(vol < OxygenSensor_Table[i].voltageMV)
+            break;
+    }
+    if(i>0) i--;
+    result = OxygenSensor_K[i] * (vol - OxygenSensor_Table[i].voltageMV) + OxygenSensor_Table[i].oxygenPercent;
+    man.fCurMaskOxygen = (result + man.maskOxygenCalibOffset) * man.maskOxygenCalibRatio; //校准
+
+    if(man.curPage == PAGE_CALIBRATION || man.curPage == PAGE_ADJUSTED)
+    {
+        char s[10];
+        sprintf(s, "%f", man.fCurMaskOxygen);
+        SetTextValueLen(0x042C, s, 6);
+    }
+
+    man.curMaskOxygen = man.fCurMaskOxygen;
+
+    if(man.curMaskOxygen < 19)
+        man.curMaskOxygen = 0;
+    else if(man.curMaskOxygen >= 18 && man.curMaskOxygen < 21)
+        man.curMaskOxygen = 21;
+    if(man.curMaskOxygen > 99) man.curMaskOxygen = 99;
+
+    if(man.oxygenMode == MODE_OXYGENAIR)
+    {
+        Int2String(man.curMaskOxygen, man.sCurOxygen);//更新氧浓度显示
+    	SetTextValueLen(VAR_ADDR_CURRENTMASKOXYGEN, man.sCurOxygen, 2);
+    }       
+    //cDebug("The mask oxygen ADC is 0x%04x\r\n", (int)man.maskOxygenADC);
+}
+
+void InnerTemperProcess(void)
+{
+    uint8_t i;
+    float vol, res, result;
+
+    //内部温度
+    Sort16(man.innerTemperBufferADC, TEMPERBUFFER_SIZE);
+    man.innerTemperADC = GetAverage16(man.innerTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
+    //转换成实际温度
+    if(man.innerTemperADC > 0x8000)
+        vol = ((float)man.innerTemperADC-(float)0x8000)/(float)(0x7FFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
+    else
+        vol = 0;
+    res = TEMPER_ADC_PULLUP_RESISTOR_OHM*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
+    for(i=0;i<SIZEOF(Pt100_Table);i++)
+    {
+        if(res < Pt100_Table[i].resistorKOhm)
+            break;
+    }
+    if(i>0) i--;
+    result = Pt100_K[i] * (res - Pt100_Table[i].resistorKOhm) + Pt100_Table[i].temperature;
+    man.curInnerTemper = (result + man.innerTemperCalibOffset) * man.innerTemperCalibRatio; //校准
+
+    if(man.curPage == PAGE_CALIBRATION || man.curPage == PAGE_ADJUSTED)
+    {
+        char s[10];
+        sprintf(s, "%f", man.curInnerTemper);
+        SetTextValueLen(0x0430, s, 6);
+    }
+
+    //cDebug("The inner temper ADC is 0x%04x\r\n", (int)man.innerTemperADC);
+}
+
+void CubeTemperProcess(void)
+{
+    uint8_t i;
+    float vol, res, result;
+
+    //管道温度
+    Sort16(man.cubeTemperBufferADC, TEMPERBUFFER_SIZE);
+    man.cubeTemperADC = GetAverage16(man.cubeTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
+    if(man.cubeTemperADC <= 0x1000)
+    {
+        cDebug("CHIP1 RESET=============================\r\n");
+        TM770X_Init(CHIP1_TM7706);
+        Delay10ms();    
+    }
+
+    //转换成实际温度
+    if(man.cubeTemperADC > 0x8000)
+        vol = ((float)man.cubeTemperADC-(float)0x8000)/(float)(0x7FFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
+    else
+        vol = 0;
+    res = TEMPER_ADC_PULLUP_RESISTOR_OHM*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
+    for(i=0;i<SIZEOF(Pt100_Table);i++)
+    {
+        if(res < Pt100_Table[i].resistorKOhm)
+            break;
+    }
+    if(i>0) i--;
+    result = Pt100_K[i] * (res - Pt100_Table[i].resistorKOhm) + Pt100_Table[i].temperature;
+    man.curCubeTemper = (result + man.cubeTemperCalibOffset) * man.cubeTemperCalibRatio; //校准
+    
+    if(man.curPage == PAGE_CALIBRATION || man.curPage == PAGE_ADJUSTED)
+    {
+        char s[10];
+        sprintf(s, "%f", man.curCubeTemper);
+        SetTextValueLen(0x0434, s, 6);
+    }
+    
+    sprintf(man.stringTemp, "%f", man.curCubeTemper);
+    SetTextValueLen(VAR_ADDR_CURRENTTEMPER, man.stringTemp, 4);
+
+    //cDebug("The cube temper ADC is 0x%04x\r\n", (int)man.cubeTemperADC);
+}
+
+void MaskTemperProcess(void)
+{
+    uint8_t i;
+    float vol, res, result;
+
+    //氧罩温度
+    Sort16(man.maskTemperBufferADC, TEMPERBUFFER_SIZE);
+    man.maskTemperADC = GetAverage16(man.maskTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
+
+    //转换成实际温度
+    if(man.maskTemperADC > 0x8000)     
+        vol = ((float)man.maskTemperADC-(float)0x8000)/(float)(0x7FFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
+    else
+        vol = 0;
+    res = TEMPER_ADC_PULLUP_RESISTOR_OHM*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
+    //res = (TEMPER_ADC_PULLUP_RESISTOR_OHM+man.maskTemperCalibOffset)*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
+    for(i=0;i<SIZEOF(Pt100_Table);i++)
+    {
+        if(res < Pt100_Table[i].resistorKOhm)
+            break;
+    }
+    if(i>0) i--;
+    result = Pt100_K[i] * (res - Pt100_Table[i].resistorKOhm) + Pt100_Table[i].temperature;
+    man.curMaskTemper = (result + man.maskTemperCalibOffset) * man.maskTemperCalibRatio; //校准       
+    //man.curMaskTemper = result;
+
+    if(man.curPage == PAGE_CALIBRATION || man.curPage == PAGE_ADJUSTED)
+    {
+        char s[10];
+        sprintf(s, "%f", man.curMaskTemper);
+        SetTextValueLen(0x0438, s, 6);
+    }
+
+    if(man.oxygenMode == MODE_OXYGENAIR)
+    {
+        //sprintf(man.stringTemp, "%f", man.curInnerTemper); //暂时用于温度PID测试
+        sprintf(man.stringTemp, "%f", man.curMaskTemper);
+        SetTextValueLen(VAR_ADDR_CURRENTMASKTEMPER, man.stringTemp, 4);
+    }
+    //cDebug("The mask temper ADC is 0x%04x\r\n", (int)man.maskTemperADC);
+}
+
 void ADCGet(void)
 {
     uint8_t i;
     uint8_t readData2[2];
-    uint8_t readData4[4];
-
     static uint8_t flag = 0;
 
-    float vol, res, result;
-
-    //readData4[0] = 0;
-    
     if(man.oxygenMode == MODE_OXYGENAIR)//空氧模式需要采集2氧浓度传感器和3温度传感器数据
     {
-        if(flag)
-            flag = 0;
-        else
+        if(flag == 0)
             flag = 1;
+        else if(flag == 1)
+            flag = 2;
+        else
+            flag = 0;
+    }
+    else  //其他模式不用采集罩氧和罩温
+    {
+        if(flag == 0)
+            flag = 2;
+        else
+            flag = 0;
     }
 
-    if(!flag)
+    //flag = 2;
+
+    if(flag == 0)
     {
         TM770X_ReadData(0, readData2);
-        TM770X_ReadData(2, &readData4[1]);
-        TM770X_ReadData(3, &readData4[1]);
+        TM770X_ReadData(3, readData2);
         os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
 
         for(i=0;i<OXYGENBUFFER_SIZE;i++)
@@ -504,137 +726,26 @@ void ADCGet(void)
             readData2[1] = 0;               
             TM770X_ReadData(0, readData2);
             man.innerOxygenBufferADC[i] = *((uint16_t*)readData2);
-    
-            //内部温度
-            readData4[0] = 0;
-            readData4[1] = 0;
-            readData4[2] = 0;
-            readData4[3] = 0;               
-            TM770X_ReadData(2, &readData4[1]);
-            man.innerTemperBufferADC[i] = *((uint32_t*)readData4);
 
             //管道温度
-            readData4[0] = 0;
-            readData4[1] = 0;
-            readData4[2] = 0;
-            readData4[3] = 0;               
-            TM770X_ReadData(3, &readData4[1]);
-            man.cubeTemperBufferADC[i] = *((uint32_t*)readData4);
+            readData2[0] = 0;
+            readData2[1] = 0;              
+            TM770X_ReadData(3, readData2);
+            man.cubeTemperBufferADC[i] = *((uint16_t*)readData2);
 
             os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
         }
 
         //========================================================================================================
-        //内部氧浓度
-        Sort16(man.innerOxygenBufferADC, OXYGENBUFFER_SIZE);
-        man.innerOxygenADC = GetAverage16(man.innerOxygenBufferADC, OXYGENBUFFER_SIZE, OXYGENBUFFER_SIZE/4);       
-        if(man.innerOxygenADC <= 0x1000)
-        {
-            cDebug("0=============================\r\n");
-            TM770X_Init(CHIP0_TM7706);
-            //TM770X_Init(CHIP_ALL);
-            Delay10ms();    
-        }
-        
-        if(man.innerOxygenADC > 0x8000)
-            vol = (float)(man.innerOxygenADC-0x8000)/(float)(0x7FFF)*OXYGEN_ADC_INPUT_VOLTAGE_RANGE_MV;  //14.2mV
-        else
-            vol = 0;
-        for(i=0;i<SIZEOF(OxygenSensor_Table);i++)
-        {
-            if(vol < OxygenSensor_Table[i].voltageMV)
-                break;
-        }
-        if(i>0) i--;
-        result = OxygenSensor_K[i] * (vol - OxygenSensor_Table[i].voltageMV) + OxygenSensor_Table[i].oxygenPercent;
-        man.fCurInnerOxygen = result * man.innerOxygenCalibRatio + man.innerOxygenCalibOffset; //校准
-
-        if(man.curPage == PAGE_CALIBRATION || man.curPage == PAGE_ADJUSTED)
-        {
-            char s[10];
-            sprintf(s, "%f", man.fCurInnerOxygen);
-            //cDebug("the man.curInnerOxygen = %s\r\n", s);
-            //cDebug("strlen(s) = %d\r\n", (int)strlen(s));
-            SetTextValueLen(0x0428, s, 6);
-        }
-
-        man.curInnerOxygen = man.fCurInnerOxygen;
-
-        if(man.curInnerOxygen < 19)
-            man.curInnerOxygen = 0;
-        else if(man.curInnerOxygen >= 18 && man.curInnerOxygen < 21)
-            man.curInnerOxygen = 21;
-        if(man.curInnerOxygen > 99) man.curInnerOxygen = 99;
-        Int2String(man.curInnerOxygen, man.sCurOxygen);//更新氧浓度显示
-    	SetTextValueLen(VAR_ADDR_CURRENTOXYGEN, man.sCurOxygen, 2);       
-        //cDebug("\r\nThe inner oxygen ADC is 0x%04x\r\n", (int)man.innerOxygenADC);       
-
-        //========================================================================================================
-        //内部温度
-        Sort32(man.innerTemperBufferADC, TEMPERBUFFER_SIZE);
-        man.innerTemperADC = GetAverage32(man.innerTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
-        //转换成实际温度
-        vol = ((float)man.innerTemperADC-(float)0x800000)/(float)(0x7FFFFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
-        res = TEMPER_ADC_PULLUP_RESISTOR_OHM*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
-        for(i=0;i<SIZEOF(Pt100_Table);i++)
-        {
-            if(res < Pt100_Table[i].resistorKOhm)
-                break;
-        }
-        if(i>0) i--;
-        result = Pt100_K[i] * (res - Pt100_Table[i].resistorKOhm) + Pt100_Table[i].temperature;
-        man.curInnerTemper = result * man.innerTemperCalibRatio + man.innerTemperCalibOffset; //校准        
-
-        if(man.curPage == PAGE_CALIBRATION || man.curPage == PAGE_ADJUSTED)
-        {
-            char s[10];
-            sprintf(s, "%f", man.curInnerTemper);
-            SetTextValueLen(0x0430, s, 6);
-        }
+        InnerOxygenProcess();       
        
         //========================================================================================================    
-        //管道温度
-        Sort32(man.cubeTemperBufferADC, TEMPERBUFFER_SIZE);
-        man.cubeTemperADC = GetAverage32(man.cubeTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
-        //转换成实际温度
-        vol = ((float)man.cubeTemperADC-(float)0x800000)/(float)(0x7FFFFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
-        res = TEMPER_ADC_PULLUP_RESISTOR_OHM*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
-        for(i=0;i<SIZEOF(Pt100_Table);i++)
-        {
-            if(res < Pt100_Table[i].resistorKOhm)
-                break;
-        }
-        if(i>0) i--;
-        result = Pt100_K[i] * (res - Pt100_Table[i].resistorKOhm) + Pt100_Table[i].temperature;
-        man.curCubeTemper = result * man.cubeTemperCalibRatio + man.cubeTemperCalibOffset; //校准
-        
-        if(man.curPage == PAGE_CALIBRATION || man.curPage == PAGE_ADJUSTED)
-        {
-            char s[10];
-            sprintf(s, "%f", man.curCubeTemper);
-            SetTextValueLen(0x0434, s, 6);
-        }
-        
-        sprintf(man.stringTemp, "%f", man.curCubeTemper);
-        SetTextValueLen(VAR_ADDR_CURRENTTEMPER, man.stringTemp, 4);
-
-//        Uart_SendData(0); 
-//        Uart_SendData(man.innerTemperADC>>24);
-//        Uart_SendData(man.innerTemperADC>>16);
-//        Uart_SendData(man.innerTemperADC>>8);
-//        Uart_SendData(man.innerTemperADC); 
-//
-//        Uart_SendData(1); 
-//        Uart_SendData(man.cubeTemperADC>>24);
-//        Uart_SendData(man.cubeTemperADC>>16);
-//        Uart_SendData(man.cubeTemperADC>>8);
-//        Uart_SendData(man.cubeTemperADC);
+        CubeTemperProcess();
     }
-    else
+    else if(flag == 1)
     {
         TM770X_ReadData(1, readData2);
-        TM770X_ReadData(2, &readData4[1]);
-        TM770X_ReadData(4, &readData4[1]);
+        TM770X_ReadData(4, readData2);
         os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
 
         for(i=0;i<OXYGENBUFFER_SIZE;i++)
@@ -644,151 +755,43 @@ void ADCGet(void)
             readData2[1] = 0;               
             TM770X_ReadData(1, readData2);
             man.maskOxygenBufferADC[i] = *((uint16_t*)readData2);
-    
-            //内部温度
-            readData4[0] = 0;
-            readData4[1] = 0;
-            readData4[2] = 0;
-            readData4[3] = 0;               
-            TM770X_ReadData(2, &readData4[1]);
-            man.innerTemperBufferADC[i] = *((uint32_t*)readData4);
 
             //氧罩温度
-            readData4[0] = 0;
-            readData4[1] = 0;
-            readData4[2] = 0;
-            readData4[3] = 0;               
-            TM770X_ReadData(4, &readData4[1]);
-            man.maskTemperBufferADC[i] = *((uint32_t*)readData4);
+            readData2[0] = 0;
+            readData2[1] = 0;               
+            TM770X_ReadData(4, readData2);
+            man.maskTemperBufferADC[i] = *((uint16_t*)readData2);
 
             os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
         }
 
         //========================================================================================================
-        //氧罩氧浓度
-        Sort16(man.maskOxygenBufferADC, OXYGENBUFFER_SIZE);
-        man.maskOxygenADC = GetAverage16(man.maskOxygenBufferADC, OXYGENBUFFER_SIZE, OXYGENBUFFER_SIZE/4);
-//        if(man.maskOxygenADC <= 0x1000)
-//        {
-//            cDebug("=============================\r\n");
-//            TM770X_Init(CHIP0_TM7706);
-//            //Delay10ms();    
-//        }
-
-        if(man.maskOxygenADC > 0x8000)
-            vol = (float)(man.maskOxygenADC-0x8000)/(float)(0x7FFF)*OXYGEN_ADC_INPUT_VOLTAGE_RANGE_MV;  //14.2mV
-        else
-            vol = 0;
-        for(i=0;i<SIZEOF(OxygenSensor_Table);i++)
-        {
-            if(vol < OxygenSensor_Table[i].voltageMV)
-                break;
-        }
-        if(i>0) i--;
-        result = OxygenSensor_K[i] * (vol - OxygenSensor_Table[i].voltageMV) + OxygenSensor_Table[i].oxygenPercent;
-        man.fCurMaskOxygen = result * man.maskOxygenCalibRatio + man.maskOxygenCalibOffset; //校准
-
-        if(man.curPage == PAGE_CALIBRATION || man.curPage == PAGE_ADJUSTED)
-        {
-            char s[10];
-            sprintf(s, "%f", man.fCurMaskOxygen);
-            SetTextValueLen(0x042C, s, 6);
-        }
-
-        man.curMaskOxygen = man.fCurMaskOxygen;
-
-        if(man.curMaskOxygen < 19)
-            man.curMaskOxygen = 0;
-        else if(man.curMaskOxygen >= 18 && man.curMaskOxygen < 21)
-            man.curMaskOxygen = 21;
-        if(man.curMaskOxygen > 99) man.curMaskOxygen = 99;
-
-        if(man.oxygenMode == MODE_OXYGENAIR)
-        {
-            Int2String(man.curMaskOxygen, man.sCurOxygen);//更新氧浓度显示
-        	SetTextValueLen(VAR_ADDR_CURRENTMASKOXYGEN, man.sCurOxygen, 2);
-        }       
-        //cDebug("The mask oxygen ADC is 0x%04x\r\n", (int)man.maskOxygenADC);
+        MaskOxygenProcess();
 
         //========================================================================================================
-        //内部温度
-        Sort32(man.innerTemperBufferADC, TEMPERBUFFER_SIZE);
-        man.innerTemperADC = GetAverage32(man.innerTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
-        //转换成实际温度
-        vol = ((float)man.innerTemperADC-(float)0x800000)/(float)(0x7FFFFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
-        res = TEMPER_ADC_PULLUP_RESISTOR_OHM*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
-        for(i=0;i<SIZEOF(Pt100_Table);i++)
-        {
-            if(res < Pt100_Table[i].resistorKOhm)
-                break;
-        }
-        if(i>0) i--;
-        result = Pt100_K[i] * (res - Pt100_Table[i].resistorKOhm) + Pt100_Table[i].temperature;
-        man.curInnerTemper = result * man.innerTemperCalibRatio + man.innerTemperCalibOffset; //校准
-
-        if(man.curPage == PAGE_CALIBRATION || man.curPage == PAGE_ADJUSTED)
-        {
-            char s[10];
-            sprintf(s, "%f", man.curInnerTemper);
-            SetTextValueLen(0x0430, s, 6);
-        }
-
-        //cDebug("i = %d, man.curInnerTemper result = %f\r\n", (int)i, result);
-        //cDebug("i = %d, man.curInnerTemper = %f\r\n", (int)i, man.curInnerTemper);
-
-        //========================================================================================================
-        //氧罩温度
-        Sort32(man.maskTemperBufferADC, TEMPERBUFFER_SIZE);
-        man.maskTemperADC = GetAverage32(man.maskTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
-
-//        if(man.maskTemperADC <= 0x1000)
-//        {
-//            cDebug("4=============================\r\n");
-//            TM770X_Init(CHIP2_TM7707);
-//            //TM770X_Init(CHIP_ALL);
-//            Delay10ms();    
-//        }
-
-        //转换成实际温度     
-        vol = ((float)man.maskTemperADC-(float)0x800000)/(float)(0x7FFFFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
-        res = TEMPER_ADC_PULLUP_RESISTOR_OHM*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
-        //res = (TEMPER_ADC_PULLUP_RESISTOR_OHM+man.maskTemperCalibOffset)*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
-        for(i=0;i<SIZEOF(Pt100_Table);i++)
-        {
-            if(res < Pt100_Table[i].resistorKOhm)
-                break;
-        }
-        if(i>0) i--;
-        result = Pt100_K[i] * (res - Pt100_Table[i].resistorKOhm) + Pt100_Table[i].temperature;
-        man.curMaskTemper = result * man.maskTemperCalibRatio + man.maskTemperCalibOffset; //校准       
-        //man.curMaskTemper = result;
-
-        if(man.curPage == PAGE_CALIBRATION || man.curPage == PAGE_ADJUSTED)
-        {
-            char s[10];
-            sprintf(s, "%f", man.curMaskTemper);
-            SetTextValueLen(0x0438, s, 6);
-        }
-
-        if(man.oxygenMode == MODE_OXYGENAIR)
-        {
-            //sprintf(man.stringTemp, "%f", man.curInnerTemper); //暂时用于温度PID测试
-            sprintf(man.stringTemp, "%f", man.curMaskTemper);
-            SetTextValueLen(VAR_ADDR_CURRENTMASKTEMPER, man.stringTemp, 4);
-        }
-
-//        Uart_SendData(2); 
-//        Uart_SendData(man.maskTemperADC>>24);
-//        Uart_SendData(man.maskTemperADC>>16);
-//        Uart_SendData(man.maskTemperADC>>8);
-//        Uart_SendData(man.maskTemperADC);   
+        MaskTemperProcess();
     }
-    
-//    Uart_SendData(0); 
-//    Uart_SendData(man.innerTemperADC>>24);
-//    Uart_SendData(man.innerTemperADC>>16);
-//    Uart_SendData(man.innerTemperADC>>8);
-//    Uart_SendData(man.innerTemperADC);   
+    else
+    {
+        TM770X_ReadData(2, readData2);
+        os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
+//        TM770X_ReadData(2, readData2);
+//        os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
+
+        for(i=0;i<OXYGENBUFFER_SIZE;i++)
+        {
+            //内部温度
+            readData2[0] = 0;
+            readData2[1] = 0;               
+            TM770X_ReadData(2, readData2);
+            man.innerTemperBufferADC[i] = *((uint16_t*)readData2);
+
+            os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
+        }
+
+        //========================================================================================================
+        InnerTemperProcess();
+    } 
 }
 
 void AlarmCheck(void)
@@ -989,8 +992,16 @@ void AutoCalibration(uint8 flag)
     {
         case 0: //先将混合器调到中间
             //cDebug("Calibration\r\n");
-            man.fSetupOxygen = 60.0;
+            if(flag)
+                man.fSetupOxygen = 60.0;
+            else
+                man.fSetupOxygen = 40.0;
+
             OxygenPercentControl();
+
+//            man.userTimeCnt = 2*60; //2分钟倒数
+//            man.userTimeOutFlag = 1;
+
             if(Abs(man.fSetupOxygen - man.fCurInnerOxygen) < 5) //0.5
             {
                 man.autoCalibState = 1;
@@ -1002,16 +1013,21 @@ void AutoCalibration(uint8 flag)
             SetScreen(man.curPage);
         break;
         case 2:  //校准21%浓度
-            for(i=0;i<12;i++)
+            for(i=0;i<20;i++)
                 os_wait(K_TMO, 200, 0); //等待12秒，氧浓度稳定在空气浓度
 
+            man.innerOxygenCalibOffset = 0.0;
+            man.maskOxygenCalibOffset = 0.0;
+            man.innerOxygenCalibRatio = 1.0;
+            man.maskOxygenCalibRatio = 1.0;
+
             ADCGet();
+
+            cDebug("man.fCurInnerOxygen = %f\r\n", man.fCurInnerOxygen);
 
             //内氧传感器校准
             if(man.fCurInnerOxygen < 21.0 && Abs(man.fCurInnerOxygen - 21.0) > 4.0)
             {
-                cDebug("man.fCurInnerOxygen = %f\r\n", man.fCurInnerOxygen);
-
                 man.curPage = PAGE_REPLACE_S1; 
                 SetScreen(man.curPage);
 
@@ -1026,24 +1042,26 @@ void AutoCalibration(uint8 flag)
             }
 
             
-            if(man.oxygenMode == MODE_OXYGENAIR)
-            {
-                //校准氧罩氧浓度传感器
-                if(man.fCurMaskOxygen < 21.0 && Abs(man.fCurMaskOxygen - 21.0) > 4.0)
-                {
-                    man.curPage = PAGE_REPLACE_S2; 
-                    SetScreen(man.curPage);
-    
-                    man.beeperTimes = 5;
-    
-                    while(1)
-                        os_wait(K_TMO, 10, 0);
-                }
-                else
-                {
-                    man.maskOxygenCalibOffset -= man.fCurMaskOxygen - 21.0;  
-                }
-            }
+//            if(man.oxygenMode == MODE_OXYGENAIR)
+//            {
+//                cDebug("man.fCurMaskOxygen = %f\r\n", man.fCurMaskOxygen);
+//
+//                //校准氧罩氧浓度传感器
+//                if(man.fCurMaskOxygen < 21.0 && Abs(man.fCurMaskOxygen - 21.0) > 4.0)
+//                {
+//                    man.curPage = PAGE_REPLACE_S2; 
+//                    SetScreen(man.curPage);
+//    
+//                    man.beeperTimes = 5;
+//    
+//                    while(1)
+//                        os_wait(K_TMO, 10, 0);
+//                }
+//                else
+//                {
+//                    man.maskOxygenCalibOffset -= man.fCurMaskOxygen - 21.0;  
+//                }
+//            }
             
             if(flag)
                 man.autoCalibState = 3;
@@ -1064,15 +1082,17 @@ void AutoCalibration(uint8 flag)
             ADCGet();
   
             //校准内部氧浓度传感器
-            man.innerOxygenCalibRatio *= (99.5 - man.innerOxygenCalibOffset)/(man.fCurInnerOxygen - man.innerOxygenCalibOffset);
+            //man.innerOxygenCalibRatio *= (99.5 - man.innerOxygenCalibOffset)/(man.fCurInnerOxygen - man.innerOxygenCalibOffset);
+            man.innerOxygenCalibRatio *= 99.5/man.fCurInnerOxygen;
 
             if(man.oxygenMode == MODE_OXYGENAIR)
             {
                 //校准氧罩氧浓度传感器
-                man.maskOxygenCalibRatio *= (99.5 - man.maskOxygenCalibOffset)/(man.fCurMaskOxygen - man.maskOxygenCalibOffset);
+                //man.maskOxygenCalibRatio *= (99.5 - man.maskOxygenCalibOffset)/(man.fCurMaskOxygen - man.maskOxygenCalibOffset);
+                man.maskOxygenCalibRatio *= 99.5/man.fCurMaskOxygen;
             }
 
-            man.autoCalibState = 5;
+            man.autoCalibState = 7; //不必再校准21%氧浓度
 
             man.beeperTimes = 1;
         break;
@@ -1103,34 +1123,35 @@ void AutoCalibration(uint8 flag)
             }
 
             
-            if(man.oxygenMode == MODE_OXYGENAIR)
-            {
-                //校准氧罩氧浓度传感器
-                if(man.fCurMaskOxygen < 21.0 && Abs(man.fCurMaskOxygen - 21.0) > 4.0)
-                {
-                    man.curPage = PAGE_REPLACE_S2; 
-                    SetScreen(man.curPage);
-    
-                    man.beeperTimes = 5;
-    
-                    while(1)
-                        os_wait(K_TMO, 10, 0);
-                }
-                else
-                {
-                    man.maskOxygenCalibOffset -= man.fCurMaskOxygen - 21.0;  
-                }
-            }
+//            if(man.oxygenMode == MODE_OXYGENAIR)
+//            {
+//                //校准氧罩氧浓度传感器
+//                if(man.fCurMaskOxygen < 21.0 && Abs(man.fCurMaskOxygen - 21.0) > 4.0)
+//                {
+//                    man.curPage = PAGE_REPLACE_S2; 
+//                    SetScreen(man.curPage);
+//    
+//                    man.beeperTimes = 5;
+//    
+//                    while(1)
+//                        os_wait(K_TMO, 10, 0);
+//                }
+//                else
+//                {
+//                    man.maskOxygenCalibOffset -= man.fCurMaskOxygen - 21.0;  
+//                }
+//            }
+
             man.autoCalibState = 7;
         break;
         case 7:
             man.autoCalibState = 0;
             man.autoCalibFlag = 0;
 
-            cDebug("innerOxygenCalibOffset = %f\r\n", man.innerOxygenCalibOffset);
-            cDebug("maskOxygenCalibOffset = %f\r\n", man.maskOxygenCalibOffset);
-            cDebug("innerOxygenCalibRatio = %f\r\n", man.innerOxygenCalibRatio);
-            cDebug("maskOxygenCalibRatio = %f\r\n", man.maskOxygenCalibRatio);
+//            cDebug("innerOxygenCalibOffset = %f\r\n", man.innerOxygenCalibOffset);
+//            cDebug("maskOxygenCalibOffset = %f\r\n", man.maskOxygenCalibOffset);
+//            cDebug("innerOxygenCalibRatio = %f\r\n", man.innerOxygenCalibRatio);
+//            cDebug("maskOxygenCalibRatio = %f\r\n", man.maskOxygenCalibRatio);
 
             //保存校准参数
             IapErase(EEPROM_BASEADDR_CALIB);

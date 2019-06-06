@@ -39,8 +39,8 @@ void Uart_Init(void)
 	ES = 1;                 //Enable UART1 interrupt
 
 	/************************串口2***********************************/
-	P_SW2 &= ~0x01;                              //RXD2/P1.0, TXD2/P1.1
-//  P_SW2 |= 0x01;                               //RXD2_2/P4.0, TXD2_2/P4.2
+	//P_SW2 &= ~0x01;                              //RXD2/P1.0, TXD2/P1.1
+    P_SW2 |= 0x01;                               //RXD2_2/P4.0, TXD2_2/P4.2
 
 	S2CON = 0x50;  //8位可变波特率
 

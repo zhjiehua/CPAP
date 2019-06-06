@@ -17,6 +17,7 @@
 
 //RTX51 Tiny的时钟滴答为Fosc/12/INT_CLOCK
 //Fosc=32MHz,INT_CLOCK=13333,所以RTX51 Tiny的时钟滴答约为5ms
+//Fosc=24MHz,INT_CLOCK=10000,所以RTX51 Tiny的时钟滴答约为5ms
 //如果用os_wait()延时，大约200个时钟滴答为1s，即os_wait(K_TMO, 200, 0)
 
 //-----------------------------------------------
@@ -24,9 +25,6 @@
 /* main program */
 void startupTask(void) _task_ TASK_STARTUP 
 {
-//    int a = abs(1);
-//    cDebug("%d\r\n", a);
-
 	//---------------初始化------------------------------------
 	IO_Init();
 	Timer_Init(); //定时器初始化
@@ -43,6 +41,14 @@ void startupTask(void) _task_ TASK_STARTUP
     cDebug("hello CPAP!\r\n");
 	//Uart_SendString("hello CPAP!\r\n");
 
+//    while(1)
+//    {
+//        os_wait(K_TMO, 200, 0);
+//        os_wait(K_TMO, 200, 0);
+//        cDebug("hello CPAP!\r\n");
+//        LEDM = !LEDM;    
+//    }
+
     TM770X_Init(CHIP_ALL);
     InitMan();
 
@@ -50,9 +56,6 @@ void startupTask(void) _task_ TASK_STARTUP
 
     //---------------创建任务-----------------------------
 	os_create_task(TASK_UI); 	//创建任务1
-//	os_create_task(TASK_ADC);	//创建任务2
-//    os_create_task(TASK_ALARM);	//创建任务2
-//    os_create_task(TASK_TIMER);	//创建任务2
 
 	//---------------删除该任务-----------------------------
  	os_delete_task(TASK_STARTUP);	//删除自己(task0),使task0退出任务链表
@@ -64,7 +67,7 @@ void UITask(void) _task_ TASK_UI
     uint8_t i;
     uint32_t cnt;
 
-    cDebug("UITask is running...\r\n");
+//    cDebug("UITask is running...\r\n");
 
     os_wait(K_TMO, 200, 0);
     os_wait(K_TMO, 200, 0);
@@ -113,20 +116,20 @@ void UITask(void) _task_ TASK_UI
     SetTextFontColor(VAR_ADDR_ADJUST_INNEROXYGEN_P_PTR+man.adjustPIDIndex*0x0010, COLOR_RED);
 
     //读取RTC时间
-    GetRTC();
-    cnt = 0;
-    while(!(man.autoCalibFlag&0x80) && (cnt++ < 50000))
-    {
-        uint8_t size = queue_find_cmd(&lcd_que, lcd_cmd_buffer, CMD_MAX_SIZE); //从缓冲区中获取一条指令			       
-		if(size>0)//接收到指令
-		{
-			ProcessLCDMessage(lcd_cmd_buffer, size);//指令处理
-		}
-    }
-    if(cnt >= 50000)
-    {
-        cDebug("Can not read the rtc!\r\n");
-    }
+//    GetRTC();
+//    cnt = 0;
+//    while(!(man.autoCalibFlag&0x80) && (cnt++ < 50000))
+//    {
+//        uint8_t size = queue_find_cmd(&lcd_que, lcd_cmd_buffer, CMD_MAX_SIZE); //从缓冲区中获取一条指令			       
+//		if(size>0)//接收到指令
+//		{
+//			ProcessLCDMessage(lcd_cmd_buffer, size);//指令处理
+//		}
+//    }
+//    if(cnt >= 50000)
+//    {
+//        cDebug("Can not read the rtc!\r\n");
+//    }
 
     os_create_task(TASK_ADC);	//创建任务2
     os_create_task(TASK_ALARM);	//创建任务2
@@ -158,11 +161,6 @@ void UITask(void) _task_ TASK_UI
 			ProcessLCDMessage(lcd_cmd_buffer, size);//指令处理
 		}
 
-//        if(!man.startFlag && (man.autoCalibFlag&0x01) && (man.oxygenMode != MODE_NONE))//自动校准
-//        {
-//            AutoCalibration();
-//        }
-
         AlarmCheck();
 
 		LEDM = !LEDM;
@@ -172,9 +170,9 @@ void UITask(void) _task_ TASK_UI
 
 void ADCTask(void) _task_ TASK_ADC
 {
-    cDebug("ADCTask is running...\r\n");
-
-    cDebug("man.autoCalibFlag = %d\r\n", (int)man.autoCalibFlag);
+//    cDebug("ADCTask is running...\r\n");
+//
+//    cDebug("man.autoCalibFlag = %d\r\n", (int)man.autoCalibFlag);
     
     while(1)
     {
@@ -190,15 +188,21 @@ void ADCTask(void) _task_ TASK_ADC
 
             TemperControl();
         }
-        else if(man.oxygenMode != MODE_NONE)//自动校准
+        else 
         {
-            if(man.autoCalibFlag&0x01)
-                AutoCalibration(0);//不校准99%
-            else if(man.autoCalibFlag&0x02)
-                AutoCalibration(1);
-        }
-        
+            //暂停时要关闭发热装置
+            HeatPlate_Adjust(0);
+            HeatLine_Adjust(0);
 
+            if(man.oxygenMode != MODE_NONE)//自动校准
+            {
+                if(man.autoCalibFlag&0x01)
+                    AutoCalibration(0);//不校准99%
+                    //AutoCalibration(1);
+                else if(man.autoCalibFlag&0x02)
+                    AutoCalibration(1);
+            }       
+        }
         //MBEEP = !MBEEP;
         //LEDM = !LEDM;
     }
@@ -207,7 +211,7 @@ void ADCTask(void) _task_ TASK_ADC
 
 void AlarmTask(void) _task_ TASK_ALARM
 {
-    cDebug("AlarmTask is running...\r\n");
+//    cDebug("AlarmTask is running...\r\n");
 
     while(1)
     {
@@ -248,7 +252,7 @@ void TimerTask(void) _task_ TASK_TIMER
 {
     //int16_t powerOnCnt = POWERONNOALARMTIME;
 
-    cDebug("TimerTask is running...\r\n");
+//    cDebug("TimerTask is running...\r\n");
 
     while(1)
     {
@@ -280,6 +284,13 @@ void TimerTask(void) _task_ TASK_TIMER
                     SetTextFontColor(VAR_ADDR_WARNINGWORKING_PTR, COLOR_BLACK);    
                 }
             }   
+        }
+
+        if(man.userTimeOutFlag)
+        {
+            man.userTimeCnt--;
+            if(man.userTimeCnt <= 0)
+                man.userTimeOutFlag = 0;    
         }
     }
 }

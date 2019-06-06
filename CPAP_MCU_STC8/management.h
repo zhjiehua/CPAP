@@ -13,7 +13,7 @@
 
 //温度ADC采集用
 #define TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV  20.0 //ADC输入电压20mV范围，由于128增益，2.5V参考电压，2.5V/128=20mV
-#define TEMPER_ADC_PULLUP_RESISTOR_OHM     4990.0 //上拉电阻
+#define TEMPER_ADC_PULLUP_RESISTOR_OHM     5100.0 //上拉电阻
 #define TEMPER_ADC_PULLDOWN_RESISTOR_OHM   100.0 //下拉电阻
 #define TEMPER_ADC_POWER_VOLTAGE_MV        5000.0 //ADC电源电压，通过上拉电阻和下拉电阻（或者Pt100）分压作为TM7707的输入
 //温度ADC负端的输入电压
@@ -148,6 +148,9 @@ typedef struct
     uint8_t powerOn; //开机置一，用于开机启动后15分钟才会氧疗报警
     int16_t powerOnCnt;//
 
+    uint8_t userTimeCnt; //
+    uint8_t userTimeOutFlag;
+
     uint8_t curPage; //当前页面
     uint8_t prevPage; //上一页面
     uint8_t comboKeyAutoCalibCnt; //按10次组合键进入自动校准页面
@@ -220,12 +223,12 @@ typedef struct
     uint16_t maskOxygenADC;
 
     //温度采集数据
-    uint32_t innerTemperBufferADC[TEMPERBUFFER_SIZE];
-    uint32_t cubeTemperBufferADC[TEMPERBUFFER_SIZE];
-    uint32_t maskTemperBufferADC[TEMPERBUFFER_SIZE];
-    uint32_t innerTemperADC;
-    uint32_t cubeTemperADC;
-    uint32_t maskTemperADC;
+    uint16_t innerTemperBufferADC[TEMPERBUFFER_SIZE];
+    uint16_t cubeTemperBufferADC[TEMPERBUFFER_SIZE];
+    uint16_t maskTemperBufferADC[TEMPERBUFFER_SIZE];
+    uint16_t innerTemperADC;
+    uint16_t cubeTemperADC;
+    uint16_t maskTemperADC;
 
     //报警
     uint8_t beeperAlarm; //蜂鸣器响
@@ -286,5 +289,11 @@ void ADCGet(void);
 void AlarmCheck(void);
 
 void AutoCalibration(uint8_t flag);
+
+void InnerOxygenProcess(void);
+void MaskOxygenProcess(void);
+void InnerTemperProcess(void);
+void CubeTemperProcess(void);
+void MaskTemperProcess(void);
 
 #endif

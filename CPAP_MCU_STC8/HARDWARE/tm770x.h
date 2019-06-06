@@ -4,10 +4,10 @@
 #include "common.h"
 
 #define CHIP0_TM7706 0x01
-#define CHIP1_TM7707 0x02
+#define CHIP1_TM7706 0x02
 #define CHIP2_TM7707 0x04
 
-#define CHIP_ALL     CHIP0_TM7706|CHIP1_TM7707|CHIP2_TM7707
+#define CHIP_ALL     CHIP0_TM7706|CHIP1_TM7706|CHIP2_TM7707
 
 //通信寄存器功能
 #define TM7706_REG_COM		0x00
@@ -33,6 +33,7 @@
 #define READ_REG    0x08
 #define CHANNAL_1   0x00
 #define CHANNAL_2   0x01
+#define CHANNAL_3   0x03
 
 //设置寄存器功能
 #define MODE_NORMAL     0x00

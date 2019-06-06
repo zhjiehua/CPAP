@@ -27,7 +27,7 @@
 sbit IIC_SCL = P2^5; //SCL
 sbit IIC_SDA = P2^4; //SDA	 
 sbit READ_SDA = P2^4; //输入SDA
-sbit IIC_WP = P2^7; //Write Protect
+sbit IIC_WP = P2^3; //Write Protect
 
 //IIC所有操作函数
 void IIC_Init(void);                //初始化IIC的IO口				 

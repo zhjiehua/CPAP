@@ -40,29 +40,54 @@ Key_TypeDef key;
 void IO_Init(void)
 {
 	//IO--------------------------------------------------------------------------------------
-	P0M1 = 0x00;    //Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«
+	P0M1 = 0x00;    //ÍÆË«ÍÆË«Ë«Ë«Ë«Ë«
 	P0M0 = 0xA0;
-	P0 = 0xFF;    //M-DiscHeat,SW7,M-DiscLine,SW5,SW3,SW1,SW2,SW6
+	P0 = 0xFF;    //M-DiscHeat,WIFI_RST,M-DiscLine,SW7,SW5,SW4,SW1,SW2
 	//----------------------
-	P1M1 = 0x00;    //Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«           //LCD_DOUT¸Ä³ÉÍÆÍì
-	P1M0 = 0x01;    //
-	P1 = 0xFF;    //XTAL2,XTAL1,A-SCLK,A-DATA,A-DRDY3,Î´¶¨Òå,LCD_DIN,LCD_DOUT
+	P1M1 = 0x00;    //Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«           
+	P1M0 = 0x00;    //
+	P1 = 0xFF;    //XTAL2,XTAL1,STM_DIR,S2_MODE0,M_CLKO1,S2_MODE1,S2_MODE2,WIFI_EN
 	//----------------------
 	P2M1 = 0x70;    //Ë«Â©Â©Â©Ë«Ë«Ë«Ë«
 	P2M0 = 0x70;
-	P2 = 0xFF;    //IIC_WP,LEDM,IIC_SCL,IIC_SDA,RES1,RES2,RES3,LCD_BUSY
+	P2 = 0xFF;    //SW6,LEDM,IIC_SCL,IIC_SDA,IIC_WP,A_DATA,A_RST,A_SCLK
 	//----------------------
-	P3M1 = 0x00;    //Ë«Ë«Ë«ÍÆË«Ë«Ë«Ë«
-	P3M0 = 0x10;
-	P3 = 0xEF;    //I-OVER,STM-DIR,STM-PULSE,MBEEP,MIN2,MIN1,M-TXD,M-RXD
+	P3M1 = 0x00;    //Ë«Ë«Ë«ÍÆË«Ë«ÍÆË«
+	P3M0 = 0x12;
+	P3 = 0xEF;    //A_CS1,I-OVER,STM-PULSE,MBEEP,MIN2,MIN1,M-TXD,M-RXD
 	//----------------------
-	P4M1 = 0x00;    //Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«
-	P4M0 = 0x00;
-	P4 = 0xFF;    //A-CS3,A-DRDY1,A-DRDY2,A-RST,SW4,RES4,STM-EN,A-CS1
+	P4M1 = 0x00;    //Ë«Ë«Ë«Ë«Ë«Ë«ÍÆË«Ë«        //LCD_RXD¸Ä³ÉÍÆÍì
+	P4M0 = 0x04;
+	P4 = 0xFF;    //A_CS2,---,STM_EN,S2_SLEEP,SW3,LCD_RXD,A_DRDY1,LCD_TXD
 	
 	P5M1 = 0x00;    //Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«
 	P5M0 = 0x00;
-	P5 = 0xFF;    //---,---,A-CS2,M-CLKA,---,---,---,---
+	P5 = 0xFF;    //---,---,A_DRDY2,M-CLKO2,---,---,---,---
+
+//    //IO--------------------------------------------------------------------------------------
+//	P0M1 = 0x00;    //Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«
+//	P0M0 = 0xA0;
+//	P0 = 0xFF;    //M-DiscHeat,SW7,M-DiscLine,SW5,SW3,SW1,SW2,SW6
+//	//----------------------
+//	P1M1 = 0x00;    //Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«           //LCD_DOUT¸Ä³ÉÍÆÍì
+//	P1M0 = 0x01;    //
+//	P1 = 0xFF;    //XTAL2,XTAL1,A-SCLK,A-DATA,A-DRDY3,Î´¶¨Òå,LCD_DIN,LCD_DOUT
+//	//----------------------
+//	P2M1 = 0x70;    //Ë«Â©Â©Â©Ë«Ë«Ë«Ë«
+//	P2M0 = 0x70;
+//	P2 = 0xFF;    //IIC_WP,LEDM,IIC_SCL,IIC_SDA,RES1,RES2,RES3,LCD_BUSY
+//	//----------------------
+//	P3M1 = 0x00;    //Ë«Ë«Ë«ÍÆË«Ë«Ë«Ë«
+//	P3M0 = 0x10;
+//	P3 = 0xEF;    //I-OVER,STM-DIR,STM-PULSE,MBEEP,MIN2,MIN1,M-TXD,M-RXD
+//	//----------------------
+//	P4M1 = 0x00;    //Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«
+//	P4M0 = 0x00;
+//	P4 = 0xFF;    //A-CS3,A-DRDY1,A-DRDY2,A-RST,SW4,RES4,STM-EN,A-CS1
+//	
+//	P5M1 = 0x00;    //Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«Ë«
+//	P5M0 = 0x00;
+//	P5 = 0xFF;    //---,---,A-CS2,M-CLKA,---,---,---,---
 
 	//SFR---------------------------------------------------------------------------
 	WDT_CONTR = 0x00;         //WDTÎ´Æô¶¯
@@ -91,11 +116,10 @@ void IO_Init(void)
 	A_RST = 1;
     A_CS1 = 1;
     A_CS2 = 1;
-    A_CS3 = 1;
     A_SCLK = 1;
     A_DRDY1 = 1;
     A_DRDY2 = 1;
-    A_DRDY3 = 1;
+
 
     //¹Ø±Õ¼ÓÈÈ
 //    M_DISCHEAT = 0;
@@ -103,10 +127,16 @@ void IO_Init(void)
     M_DISCHEAT = 1;
     M_LINEHEAT = 1;
 
+    MBEEP = 0;
+
     //²½½øµç»ú
 	STM_EN = 1;
     STM_DIR = 1;
     STM_PULSE = 1;
+    S2_SLEEP = 1;
+    S2_MODE0 = 1;
+    S2_MODE1 = 1;
+    S2_MODE2 = 1;
 
     //TM770XÊ±ÖÓÊä³ö£¬
     P_SW2 = 0x80;   
@@ -351,7 +381,10 @@ void Key_Process_NoCombo(void)
             os_wait(K_TMO, 2, 0); //²Á³ýÐèÒªµÈ´ý4~6ms£¬ÕâÀïµÈ´ý10ms
             IapProgram(EEPROM_BASEADDR_DEFAULT, 0xA5);
             EEPROM_WriteBytes(EEPROM_BASEADDR_CALIB, (uint8_t*)(man.pCalib), sizeof(float)*10);
-            man.curPage = PAGE_PAUSE;
+            if(man.startFlag)
+                man.curPage = PAGE_RUNNING;
+            else
+                man.curPage = PAGE_PAUSE;
             SetScreen(man.curPage);
         }
         else if(man.curPage == PAGE_ADJUSTED)//±£´æPID²ÎÊý
