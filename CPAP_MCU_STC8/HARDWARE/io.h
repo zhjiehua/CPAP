@@ -3,6 +3,66 @@
 
 #include "common.h"
 
+//硬件版本18A
+#ifdef HARDWARE_VERSION_18A
+//misc
+sbit LEDM = P2^6;
+sbit MBEEP = P3^4;
+
+//sensor
+//sbit MIN1 = P3^2;
+//sbit MIN2 = P3^3;
+sbit MIN1 = P3^3;
+sbit MIN2 = P3^2;
+
+//stepmotor
+sbit STM_PULSE = P3^5;
+sbit STM_DIR = P3^6;
+sbit STM_EN = P4^5;
+
+//加热
+sbit M_DISCHEAT = P0^7;
+sbit M_LINEHEAT = P0^5;
+sbit I_OVER = P3^7;
+
+//key
+sbit KEY_SW1 = P0^2;
+sbit KEY_SW2 = P0^1;
+sbit KEY_SW3 = P0^3;
+sbit KEY_SW4 = P4^3;
+sbit KEY_SW5 = P0^4;
+sbit KEY_SW6 = P0^0;
+sbit KEY_SW7 = P0^6;
+
+//EEPROM
+//sbit IIC_WP = P2^7;
+//sbit IIC_SCL = P2^5;
+//sbit IIC_SDA = P2^4;
+
+//LCD
+sbit LCD_DOUT = P1^0;
+sbit LCD_DIN = P1^1;
+sbit LCD_BUSY = P2^0;
+
+//串口
+sbit M_RXD = P3^0;
+sbit M_TXD = P3^1;
+
+//AD
+sbit M_CLKA = P5^4;
+sbit A_RST = P4^4;
+sbit A_SCLK = P1^5;
+sbit A_DATA = P1^4;
+sbit A_CS1 = P4^0;
+sbit A_CS2 = P5^5;
+sbit A_CS3 = P4^7;
+sbit A_DRDY1 = P4^6;
+sbit A_DRDY2 = P4^5;
+sbit A_DRDY3 = P1^3;
+#endif 
+
+//硬件版本24A
+#ifdef HARDWARE_VERSION_24A
 //misc
 sbit LEDM = P2^6;
 sbit MBEEP = P3^4;
@@ -64,6 +124,8 @@ sbit A_DRDY2 = P5^5;
 //WIFI模块
 sbit WIFI_RST = P0^6;
 sbit WIFI_EN = P1^0;
+#endif 
+
 
 
 

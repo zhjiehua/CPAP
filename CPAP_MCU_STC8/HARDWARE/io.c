@@ -36,6 +36,98 @@ const char TEMPER_ALARM_STRING[] = {0xCE, 0xC2, 0xB6, 0xC8, 0xB3, 0xAC, 0xB9, 0x
 
 Key_TypeDef key;
 
+//YLJ18AM版本
+#ifdef HARDWARE_VERSION_18A
+//IO初始化
+void IO_Init(void)
+{
+	//IO--------------------------------------------------------------------------------------
+	P0M1 = 0x00;    //推双推双双双双双
+	P0M0 = 0xA0;
+	P0 = 0xFF;    //M-DiscHeat,SW7,M-DiscLine,SW5,SW3,SW1,SW2,SW6
+	//----------------------
+	P1M1 = 0x00;    //双双双双双双双推           //LCD_DOUT改成推挽
+	P1M0 = 0x01;    //
+	P1 = 0xFF;    //XTAL2,XTAL1,A-SCLK,A-DATA,A-DRDY3,未定义,LCD_DIN,LCD_DOUT
+	//----------------------
+	P2M1 = 0x70;    //双漏漏漏双双双双
+	P2M0 = 0x70;
+	P2 = 0xFF;    //IIC_WP,LEDM,IIC_SCL,IIC_SDA,RES1,RES2,RES3,LCD_BUSY
+	//----------------------
+	P3M1 = 0x00;    //双双双推双双双双
+	P3M0 = 0x10;
+	P3 = 0xEF;    //I-OVER,STM-DIR,STM-PULSE,MBEEP,MIN2,MIN1,M-TXD,M-RXD
+	//----------------------
+	P4M1 = 0x00;    //双双双双双双双双双
+	P4M0 = 0x00;
+	P4 = 0xFF;    //A-CS3,A-DRDY1,A-DRDY2,A-RST,SW4,RES4,STM-EN,A-CS1
+	
+	P5M1 = 0x00;    //双双双双双双双双双
+	P5M0 = 0x00;
+	P5 = 0xFF;    //---,---,A-CS2,M-CLKA,---,---,---,---
+
+	//SFR---------------------------------------------------------------------------
+	WDT_CONTR = 0x00;         //WDT未启动
+	PCON = 0x00; //bit7=0 串口波特率不加倍
+	//SCON = 0x50;  MODE 1	可变波特率8位数据方式
+	//TMOD = 0x00; //T0,MODE0,16位自动重装,T1 MODE1,16位自动重装
+	//AUXR = 0xD5; //T0/T1/T2不分频,12T快速模式;T2为串口1的波特率发生器
+
+	//TCON = 0x00; //
+	
+//
+//	AUXR1 = 0x20;	//使用DPTR0,CCP在P24P25P26,串口1在P30/P31
+//
+//	P_SW2 = 0x00; //
+//	ADC_CONTR = 0x00; //AD未启动
+//	P4SW = 0x70; //P46P45P44设为IO口
+//	WAKE_CLKO = 0x00; //不输出时钟
+////	CLK_DIV = 0x00; //时钟不分频,不输出主时钟
+//	IE = 0x00; //
+//	IE2 = 0x00; //
+	IP0 = 0x10; //---PCA,LVD,ADC,UART,T1,EX1,T0,EX0,UART高优先级
+
+    //-------------------------------------------------------------
+	//初始化IO
+    //TM760X
+	A_RST = 1;
+    A_CS1 = 1;
+    A_CS2 = 1;
+	A_CS3 = 1;
+    A_SCLK = 1;
+    A_DRDY1 = 1;
+    A_DRDY2 = 1;
+	A_DRDY3 = 1;
+
+    //关闭加热
+    M_DISCHEAT = 1;
+    M_LINEHEAT = 1;
+
+    MBEEP = 0;
+
+    //步进电机
+	STM_EN = 1;
+    STM_DIR = 1;
+    STM_PULSE = 1;
+
+    //TM770X时钟输出，
+    P_SW2 = 0x80;   
+    XOSCCR |= 0xC0; //启动外部晶振
+    while(XOSCCR&0x01 == 0x00); //外部晶振就绪
+    CKSEL = 0x01;                                //主时钟使用外部晶振
+    CKSEL |= 0xA0;                               //主时钟32分频输出到P5.4口
+    CLKDIV = 0x00;                             //SYSclk = MCLK/1
+    //CLKDIV = 0x0A;                             //SYSclk = MCLK/10   //不能正常工作
+    IRC24MCR = 0x00;                            //关闭内部24MHz时钟
+    P_SW2 = 0x00;
+
+    man.beeperAlarm = 0;
+}
+#endif
+
+
+//YLJ24AM版本
+#ifdef HARDWARE_VERSION_24A
 //IO初始化
 void IO_Init(void)
 {
@@ -63,31 +155,6 @@ void IO_Init(void)
 	P5M1 = 0x00;    //双双双双双双双双双
 	P5M0 = 0x00;
 	P5 = 0xFF;    //---,---,A_DRDY2,M-CLKO2,---,---,---,---
-
-//    //IO--------------------------------------------------------------------------------------
-//	P0M1 = 0x00;    //双双双双双双双双
-//	P0M0 = 0xA0;
-//	P0 = 0xFF;    //M-DiscHeat,SW7,M-DiscLine,SW5,SW3,SW1,SW2,SW6
-//	//----------------------
-//	P1M1 = 0x00;    //双双双双双双双双           //LCD_DOUT改成推挽
-//	P1M0 = 0x01;    //
-//	P1 = 0xFF;    //XTAL2,XTAL1,A-SCLK,A-DATA,A-DRDY3,未定义,LCD_DIN,LCD_DOUT
-//	//----------------------
-//	P2M1 = 0x70;    //双漏漏漏双双双双
-//	P2M0 = 0x70;
-//	P2 = 0xFF;    //IIC_WP,LEDM,IIC_SCL,IIC_SDA,RES1,RES2,RES3,LCD_BUSY
-//	//----------------------
-//	P3M1 = 0x00;    //双双双推双双双双
-//	P3M0 = 0x10;
-//	P3 = 0xEF;    //I-OVER,STM-DIR,STM-PULSE,MBEEP,MIN2,MIN1,M-TXD,M-RXD
-//	//----------------------
-//	P4M1 = 0x00;    //双双双双双双双双双
-//	P4M0 = 0x00;
-//	P4 = 0xFF;    //A-CS3,A-DRDY1,A-DRDY2,A-RST,SW4,RES4,STM-EN,A-CS1
-//	
-//	P5M1 = 0x00;    //双双双双双双双双双
-//	P5M0 = 0x00;
-//	P5 = 0xFF;    //---,---,A-CS2,M-CLKA,---,---,---,---
 
 	//SFR---------------------------------------------------------------------------
 	WDT_CONTR = 0x00;         //WDT未启动
@@ -151,6 +218,7 @@ void IO_Init(void)
 
     man.beeperAlarm = 0;
 }
+#endif
                          
 void Key_Scan(void)
 {

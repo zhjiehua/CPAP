@@ -67,7 +67,7 @@ void UITask(void) _task_ TASK_UI
     uint8_t i;
     uint32_t cnt;
 
-//    cDebug("UITask is running...\r\n");
+    cDebug("UITask is running...\r\n");
 
     os_wait(K_TMO, 200, 0);
     os_wait(K_TMO, 200, 0);
@@ -115,7 +115,8 @@ void UITask(void) _task_ TASK_UI
     }
     SetTextFontColor(VAR_ADDR_ADJUST_INNEROXYGEN_P_PTR+man.adjustPIDIndex*0x0010, COLOR_RED);
 
-    //读取RTC时间
+	//开机读取RTC时间，如果超过30天，则自动进入校准程序
+//    //读取RTC时间
 //    GetRTC();
 //    cnt = 0;
 //    while(!(man.autoCalibFlag&0x80) && (cnt++ < 50000))
@@ -170,7 +171,7 @@ void UITask(void) _task_ TASK_UI
 
 void ADCTask(void) _task_ TASK_ADC
 {
-//    cDebug("ADCTask is running...\r\n");
+    cDebug("ADCTask is running...\r\n");
 //
 //    cDebug("man.autoCalibFlag = %d\r\n", (int)man.autoCalibFlag);
     
@@ -211,7 +212,7 @@ void ADCTask(void) _task_ TASK_ADC
 
 void AlarmTask(void) _task_ TASK_ALARM
 {
-//    cDebug("AlarmTask is running...\r\n");
+    cDebug("AlarmTask is running...\r\n");
 
     while(1)
     {
@@ -252,7 +253,7 @@ void TimerTask(void) _task_ TASK_TIMER
 {
     //int16_t powerOnCnt = POWERONNOALARMTIME;
 
-//    cDebug("TimerTask is running...\r\n");
+    cDebug("TimerTask is running...\r\n");
 
     while(1)
     {

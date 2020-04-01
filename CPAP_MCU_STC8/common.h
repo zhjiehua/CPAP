@@ -5,6 +5,9 @@
 #include "intrins.h"
 #include "RTX51TNY.H"
 
+//#define HARDWARE_VERSION_18A	//"YLJ18A"
+#define HARDWARE_VERSION_24A	//"YLJ18A"	
+
 typedef unsigned char uint8_t;
 typedef          char int8_t;
 typedef unsigned int uint16_t;

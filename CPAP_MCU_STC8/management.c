@@ -120,6 +120,7 @@ void InitMan(void)
        temp0 = IapRead(EEPROM_BASEADDR_DEFAULT);
     //if(IapRead(EEPROM_BASEADDR_DEFAULT) == 0xA5)
     if(temp0 == 0xA5)
+	//if(0)
     {
         cDebug("Reading the calibration data from eeprom...\r\n");
 
@@ -215,7 +216,7 @@ void InitMan(void)
 //    cDebug("man.oxygenPID = %f, %f, %f\r\n", man.oxygenPID.Proportion, man.oxygenPID.Integral, man.oxygenPID.Derivative);
 //    cDebug("man.plateHeatTemperPID = %f, %f, %f\r\n", man.plateHeatTemperPID.Proportion, man.plateHeatTemperPID.Integral, man.plateHeatTemperPID.Derivative);
 //    cDebug("man.lineHeatTemperPID = %f, %f, %f\r\n", man.lineHeatTemperPID.Proportion, man.lineHeatTemperPID.Integral, man.lineHeatTemperPID.Derivative);
-    
+//    
     
     cDebug("man.autoCalibDate = %ld\r\n", man.autoCalibDate);
     cDebug("man.workMode = %d\r\n", (int)man.workMode);
@@ -575,14 +576,40 @@ void InnerTemperProcess(void)
     uint8_t i;
     float vol, res, result;
 
-    //内部温度
+    
+ 
+ #ifdef HARDWARE_VERSION_18A 
+ 
+   	//内部温度
+    Sort32(man.innerTemperBufferADC, TEMPERBUFFER_SIZE);
+    man.innerTemperADC = GetAverage32(man.innerTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
+			   
+	if(man.innerTemperADC <= 0x100000)
+    {
+        cDebug("CHIP1 RESET=============================\r\n");
+        TM770X_Init(CHIP1_TM7706);
+        Delay10ms();
+    } 
+
+	//转换成实际温度
+    if(man.innerTemperADC > 0x800000)
+        vol = ((float)man.innerTemperADC-(float)0x800000)/(float)(0x7FFFFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
+    else
+        vol = 0;
+#endif 
+
+#ifdef HARDWARE_VERSION_24A
+	//内部温度
     Sort16(man.innerTemperBufferADC, TEMPERBUFFER_SIZE);
     man.innerTemperADC = GetAverage16(man.innerTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
-    //转换成实际温度
+	   
+	//转换成实际温度
     if(man.innerTemperADC > 0x8000)
         vol = ((float)man.innerTemperADC-(float)0x8000)/(float)(0x7FFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
     else
         vol = 0;
+#endif 
+
     res = TEMPER_ADC_PULLUP_RESISTOR_OHM*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
     for(i=0;i<SIZEOF(Pt100_Table);i++)
     {
@@ -608,14 +635,37 @@ void CubeTemperProcess(void)
     uint8_t i;
     float vol, res, result;
 
-    //管道温度
+    
+
+#ifdef HARDWARE_VERSION_18A
+	//管道温度
+    Sort32(man.cubeTemperBufferADC, TEMPERBUFFER_SIZE);
+    man.cubeTemperADC = GetAverage32(man.cubeTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
+
+    if(man.cubeTemperADC <= 0x100000)
+    {
+        cDebug("CHIP2 RESET=============================\r\n");
+        TM770X_Init(CHIP2_TM7707);
+        Delay10ms();
+    }
+
+	//转换成实际温度
+    if(man.cubeTemperADC > 0x800000)
+        vol = ((float)man.cubeTemperADC-(float)0x800000)/(float)(0x7FFFFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
+    else
+        vol = 0;
+#endif
+
+#ifdef HARDWARE_VERSION_24A
+	//管道温度
     Sort16(man.cubeTemperBufferADC, TEMPERBUFFER_SIZE);
     man.cubeTemperADC = GetAverage16(man.cubeTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
-    if(man.cubeTemperADC <= 0x1000)
+
+	if(man.cubeTemperADC <= 0x1000)
     {
         cDebug("CHIP1 RESET=============================\r\n");
         TM770X_Init(CHIP1_TM7706);
-        Delay10ms();    
+        Delay10ms();   
     }
 
     //转换成实际温度
@@ -623,6 +673,8 @@ void CubeTemperProcess(void)
         vol = ((float)man.cubeTemperADC-(float)0x8000)/(float)(0x7FFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
     else
         vol = 0;
+#endif 
+
     res = TEMPER_ADC_PULLUP_RESISTOR_OHM*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
     for(i=0;i<SIZEOF(Pt100_Table);i++)
     {
@@ -651,7 +703,22 @@ void MaskTemperProcess(void)
     uint8_t i;
     float vol, res, result;
 
-    //氧罩温度
+    
+
+#ifdef HARDWARE_VERSION_18A
+	//氧罩温度
+    Sort32(man.maskTemperBufferADC, TEMPERBUFFER_SIZE);
+    man.maskTemperADC = GetAverage32(man.maskTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
+
+    //转换成实际温度
+    if(man.maskTemperADC > 0x800000)     
+        vol = ((float)man.maskTemperADC-(float)0x800000)/(float)(0x7FFFFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
+    else
+        vol = 0;
+#endif
+
+#ifdef HARDWARE_VERSION_24A
+	//氧罩温度
     Sort16(man.maskTemperBufferADC, TEMPERBUFFER_SIZE);
     man.maskTemperADC = GetAverage16(man.maskTemperBufferADC, TEMPERBUFFER_SIZE, TEMPERBUFFER_SIZE/4);
 
@@ -660,6 +727,8 @@ void MaskTemperProcess(void)
         vol = ((float)man.maskTemperADC-(float)0x8000)/(float)(0x7FFF)*TEMPER_ADC_INPUT_VOLTAGE_RANGE_MV+TEMPER_ADC_NEGATIVE_INPUT_VOLTAGE_MV;  //109.6mV
     else
         vol = 0;
+#endif 
+
     res = TEMPER_ADC_PULLUP_RESISTOR_OHM*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
     //res = (TEMPER_ADC_PULLUP_RESISTOR_OHM+man.maskTemperCalibOffset)*vol/(TEMPER_ADC_POWER_VOLTAGE_MV-vol);  //111.9ohm
     for(i=0;i<SIZEOF(Pt100_Table);i++)
@@ -688,10 +757,126 @@ void MaskTemperProcess(void)
     //cDebug("The mask temper ADC is 0x%04x\r\n", (int)man.maskTemperADC);
 }
 
+#ifdef HARDWARE_VERSION_18A
 void ADCGet(void)
 {
     uint8_t i;
     uint8_t readData2[2];
+	uint8_t readData4[4];
+    static uint8_t flag = 0;
+
+    if(man.oxygenMode == MODE_OXYGENAIR)//空氧模式需要采集2氧浓度传感器和3温度传感器数据
+    {
+        if(flag == 0)
+            flag = 1;
+        else if(flag == 1)
+            flag = 2;
+        else
+            flag = 0;
+    }
+    else  //其他模式不用采集罩氧和罩温
+    {
+        if(flag == 0)
+            flag = 2;
+        else
+            flag = 0;
+    }
+
+    //flag = 2;
+
+    if(flag == 0)
+    {
+        TM770X_ReadData(0, readData2);
+        TM770X_ReadData(3, readData4);
+        os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
+
+        for(i=0;i<OXYGENBUFFER_SIZE;i++)
+        {
+            //内部氧浓度
+            readData2[0] = 0;
+            readData2[1] = 0;               
+            TM770X_ReadData(0, readData2);
+            man.innerOxygenBufferADC[i] = *((uint16_t*)readData2);
+
+            //管道温度
+            readData4[0] = 0;
+            readData4[1] = 0;
+			readData4[2] = 0;
+			readData4[3] = 0;              
+            TM770X_ReadData(3, readData4);
+            man.cubeTemperBufferADC[i] = (*((uint32_t*)readData4))>>8;
+
+            os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
+        }
+
+        //========================================================================================================
+        InnerOxygenProcess();       
+       
+        //========================================================================================================    
+        CubeTemperProcess();
+    }
+    else if(flag == 1)
+    {
+        TM770X_ReadData(1, readData2);
+        TM770X_ReadData(4, readData4);
+        os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
+
+        for(i=0;i<OXYGENBUFFER_SIZE;i++)
+        {
+            //氧罩氧浓度
+            readData2[0] = 0;
+            readData2[1] = 0;               
+            TM770X_ReadData(1, readData2);
+            man.maskOxygenBufferADC[i] = *((uint16_t*)readData2);
+
+            //氧罩温度
+            readData4[0] = 0;
+            readData4[1] = 0;
+			readData4[2] = 0;
+            readData4[3] = 0;                
+            TM770X_ReadData(4, readData4);
+            man.maskTemperBufferADC[i] = (*((uint32_t*)readData4))>>8;
+
+            os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
+        }
+
+        //========================================================================================================
+        MaskOxygenProcess();
+
+        //========================================================================================================
+        MaskTemperProcess();
+    }
+    else
+    {
+        TM770X_ReadData(2, readData4);
+        os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
+
+        for(i=0;i<OXYGENBUFFER_SIZE;i++)
+        {
+            //内部温度
+            readData4[0] = 0;
+            readData4[1] = 0;
+			readData4[2] = 0;
+            readData4[3] = 0;               
+            TM770X_ReadData(2, readData4);
+            man.innerTemperBufferADC[i] = (*((uint32_t*)readData4))>>8;
+
+            os_wait(K_TMO, OS_TICK/TM7706_OUTPUT_HZ, 0);
+        }
+
+        //========================================================================================================
+        InnerTemperProcess();
+    } 
+}
+#endif
+
+
+#ifdef HARDWARE_VERSION_24A
+void ADCGet(void)
+{
+    uint8_t i;
+    uint8_t readData2[2];
+
     static uint8_t flag = 0;
 
     if(man.oxygenMode == MODE_OXYGENAIR)//空氧模式需要采集2氧浓度传感器和3温度传感器数据
@@ -793,6 +978,7 @@ void ADCGet(void)
         InnerTemperProcess();
     } 
 }
+#endif
 
 void AlarmCheck(void)
 {

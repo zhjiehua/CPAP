@@ -223,12 +223,24 @@ typedef struct
     uint16_t maskOxygenADC;
 
     //温度采集数据
+ #ifdef HARDWARE_VERSION_18A
+
+    uint32_t innerTemperBufferADC[TEMPERBUFFER_SIZE];
+    uint32_t cubeTemperBufferADC[TEMPERBUFFER_SIZE];
+    uint32_t maskTemperBufferADC[TEMPERBUFFER_SIZE];
+    uint32_t innerTemperADC;
+    uint32_t cubeTemperADC;
+    uint32_t maskTemperADC;
+#endif
+ #ifdef HARDWARE_VERSION_24A
+
     uint16_t innerTemperBufferADC[TEMPERBUFFER_SIZE];
     uint16_t cubeTemperBufferADC[TEMPERBUFFER_SIZE];
     uint16_t maskTemperBufferADC[TEMPERBUFFER_SIZE];
     uint16_t innerTemperADC;
     uint16_t cubeTemperADC;
     uint16_t maskTemperADC;
+#endif
 
     //报警
     uint8_t beeperAlarm; //蜂鸣器响
