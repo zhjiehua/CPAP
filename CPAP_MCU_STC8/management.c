@@ -184,6 +184,9 @@ void InitMan(void)
         IapProgram(EEPROM_BASEADDR_WORKMODE, man.workMode); 
     }
 
+	//强制1模式
+	man.workMode = 1;
+
     //页面数据初始化
 	man.iSetupOxygen = 40;
     man.fSetupOxygen = man.iSetupOxygen;
